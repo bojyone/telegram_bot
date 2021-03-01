@@ -14,10 +14,10 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-updater = Updater('1406129973:AAFm02vdzi3OaIkgYNbQ82uBrKsOQsYW6E8', use_context=True)
+updater = Updater('token', use_context=True)
 j = updater.job_queue
 
-cnx = mysql.connector.connect(user='admin', password='5AFWOzyp',
+cnx = mysql.connector.connect(user='***', password='***',
                               host='127.0.0.1',
                               database='telegram_bot',
                               use_unicode=True,
