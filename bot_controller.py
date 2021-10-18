@@ -6,7 +6,7 @@ import json
 import datetime
 from datetime import datetime
 import time
-import os
+import pandas
 
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -92,100 +92,82 @@ def get_answer(update, context):
 
 def regular_message(context: CallbackContext):
 
-    f_json = open('file.json', 'r')
-    data = f_json.read()
-    data_json = json.loads(data)
-    f_json.close()
+    wget.download('https://docs.google.com/spreadsheets/d/hash/export?format=xlsx&id=hash')
+    message_list = pandas.read_excel('posts.xlsx', engine='openpyxl')['post'].dropna()
+    time_param_list = pandas.read_excel('posts.xlsx', engine='openpyxl')['time_param'].dropna().values.tolist()
+    day_param_list = pandas.read_excel('posts.xlsx', engine='openpyxl')['day_param'].dropna().values.tolist()
+    hours_list = pandas.read_excel('posts.xlsx', engine='openpyxl')['hours'].dropna().values.tolist()
+    action_list = pandas.read_excel('posts.xlsx', engine='openpyxl')['action'].dropna().values.tolist()
+    path_list = pandas.read_excel('posts.xlsx', engine='openpyxl')['path'].dropna()
+    subprocess.run('rm posts.xlsx', shell=True)
 
-    f_msg = open('message_file.txt', 'r')
-    message_list = f_msg.read().split('\\v\n')
-    f_msg.close()
+    current_day = datetime.now() 
 
-    f = open('chat_full_list.txt', 'r')
-    list = f.read().split()
-    f.close()
+    global chat
+    global photo_num
 
+    for i in range(len(message_list)):
 
-    current_day = datetime.now()
-
-    video = 'video/IMG_8202.MP4'
-
-    video_2 = 'video/4754845845845.mp4'
-
-    if current_day.hour == 11:
-
-        context.bot.send_message(chat_id='-1001399858936', text=message_list[22])
-
-    if current_day.weekday() == 0 and current_day.hour == 12:
-
-        context.bot.send_message(chat_id='-1001390565200', text=message_list[19])
-        context.bot.send_message(chat_id='-1001336819785', text=message_list[19])
-
-    if current_day.hour == 20 and current_day.weekday() == 3:
-
-        for chat in list:
-
-            context.bot.send_message(chat_id=chat, text=message_list[2])
-            context.bot.send_video(chat_id=chat, video=open(video, 'rb'), supports_streaming=True, width=720, height=1280)
-
-
-    if current_day.weekday() == 3 and current_day.day % 2 == 0 and current_day.hour == 19:
-
-        for chat in list:
-
-            context.bot.send_video(chat_id=chat, video=open(video_2, 'rb'), supports_streaming=True, width=755, height=1070)
-
-
-    if current_day.hour == 15:
-
-        for value in data_json.values():
-
-            j = 0
-
-            if value['chat_id'] == '-1001288141021':
-                j = 11
-
-            if current_day.weekday() != 5:
-
-                if current_day.weekday() != 2:
-                    context.bot.send_message(chat_id=value['chat_id'], text=message_list[current_day.weekday() + j])
-
-                else:
-                    
-                    context.bot.send_message(chat_id=value['chat_id'], text=message_list[current_day.weekday() + j])
-                    context.bot.send_video(chat_id=value['chat_id'], video=open(video, 'rb'), supports_streaming=True, width=720, height=1280)
-
+        act = action_list[i]
+        flag = int(time_param_list[i]) 
+        weekday = int(day_param_list[i])
+        hs = str(hours_list[i]).split(',')
+        #hours = list(map(str(hours_list[1]).split(','))) #по какой-то причине стал парсить не текстом а числом сплавающей точкой
+        hours = []
+        for h in hs:
+            if '.' in h:
+                hours.append(int(h[:h.find('.')]))
             else:
+                hours.append(int(h))
+        
+        if (current_day.minute == 0 and flag == 1) or (current_day.minute == 30 and flag == 2):
 
-                photo = 'images/photo_saturday/photo_2020-12-03_15-41-25.jpg'
-                context.bot.send_photo(chat_id=value['chat_id'], photo=open(photo, 'rb'))
+            if (current_day.weekday() == weekday or weekday == 7 or
+                (weekday == 8 and current_day.day % 2 == 0) or 
+                (weekday == 9 and current_day.day % 2 == 1)):
 
-    if current_day.hour == 18:
+                for h in hours:
 
-        context.bot.send_message(chat_id='@gigantandvkusvill1g', text=message_list[21])
-        context.bot.send_message(chat_id='@gigantandvkusvill3g', text=message_list[21])
+                    if int(h) == current_day.hour:
 
+                        if act == 'text':
 
+                            context.bot.send_message(chat_id=chat, text=message_list[i])
 
-def regular_message_2(context: CallbackContext):
+                        elif act == 'photo_dir':
 
-    f = open('chat_full_list.txt', 'r')
-    list = f.read().split()
-    f.close()
-
-    f_msg = open('message_file.txt', 'r')
-    message_list = f_msg.read().split('\\v\n')
-    f_msg.close()
-
-    current_day = datetime.now()
-
-    if current_day.weekday() == 3:
-
-        for chat in list:
-
-            context.bot.send_message(chat_id=chat, text=message_list[20])
-
-
+                            photos = os.listdir(path=path_list[i])
+                            photo = path_list[i] + photos[photo_num]
+                            context.bot.send_photo(chat_id=chat, photo=open(photo, 'rb'))
+                            photo_num = (photo_num + 1) % len(photos)
+            
+                        elif act == 'photo':
+            
+                            context.bot.send_photo(chat_id=chat, photo=open(path_list[i], 'rb'), caption=message_list[i])
+            
+                        elif act == 'video':
+            
+                            if len(message_list[i]) == 1:
+            
+                                context.bot.send_video(chat_id=chat, video=open(path_list[i], 'rb'), supports_streaming=True)
+            
+                            else:
+            
+                                context.bot.send_video(chat_id=chat, video=open(path_list[i], 'rb'), supports_streaming=True, caption=message_list[i])
+            
+                        elif act == 'mediagroup':
+            
+                            photos = os.listdir(path=path_list[i])
+                            media = []
+            
+                            for photo in photos:
+                                media.append(InputMediaPhoto(open(path_list[i] + photo, 'rb')))
+                                    
+                            context.bot.send_media_group(chat_id=chat, media=media)
+            
+                        elif act == 'doc':
+            
+                            context.bot.send_document(chat_id=chat, document=open(path_list[i],'rb'), caption=message_list[i])
 
 
 def quality_message(context: CallbackContext):
